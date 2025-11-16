@@ -34,8 +34,8 @@ void setup() {
   while (!Serial);
   Serial.println("Adafruit BMP388 / BMP390 test");
 
-  Wire.setSDA(4);
-  Wire.setSCL(5);
+  Wire.setSDA(12);
+  Wire.setSCL(13);
   Wire.begin();
   Wire.setClock(400000);
   while (!bmp.begin_I2C()) {

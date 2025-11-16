@@ -25,7 +25,7 @@ class Timer {
 
   private:
     int interval = 0;
-    unsigned int last_timestamp = 0;
+    unsigned long last_timestamp = 0; // unsigned int -> unsigned longに修正
 };
 
 Timer Timer1;
@@ -47,7 +47,7 @@ void loop() {
   Timer1.run(switchLedStatus);
   Timer2.run([]() -> void {
     // ラムダ式：一時的な関数を書くときに便利（これ一回しか使わないんだよな...って時とか）
-    unsigned int now = millis();
+    unsigned long now = millis(); // unsigned int -> unsigned longに修正
     Serial.println(String("This message is sent every 2000ms!: ") + String(now));
   });
 }
