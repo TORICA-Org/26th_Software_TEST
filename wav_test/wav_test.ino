@@ -14,8 +14,8 @@ const int audio_len = sizeof(raw_audio) / sizeof(raw_audio[0]);
 void setup() {
   Serial.begin(115200);
   
-  // サンプリングレート16kHzの場合
-  pwm.begin(16000);
+  // 音源のサンプリングレートが8kHzの場合
+  pwm.begin(8000);
   
   // バッファサイズ調整 (必要に応じて)
   // pwm.setBuffers(4, 64); 
