@@ -46,44 +46,49 @@ void initUART () {
   SerialESP.begin(460800, SERIAL_8E1);
   SerialUnder.begin(460800, SERIAL_8E1);
   
-  Serial.begin(115200); // デバッグ用にパリティはいらないかな
+  Serial.begin(115200); // デバッグ用にパリティはいらないかな...ってか使えない気がする
   Serial.print("loading...\n\n");
 }
 
 
 void transmitHeader() {
   // この関数は`setup()`内なのでブロッキング関数（処理の流れが止まる関数）であっても構わない
-  for (int i = 0; i < 5; i++) {
+  const char **str; // `const char`型ポインタ（つまり`const`な文字列）のポインタ【書き換え不可】
+
+  for (int i = 0; i < 4; i++) {
 
     switch (i) {
       case 0: {
-        sprintf(trans_buff, "time_ms, data_air_bno_accx_mss, data_air_bno_accy_mss, \
-          data_air_bno_accz_mss, data_air_bno_qw, data_air_bno_qx, data_air_bno_qy, \
-          data_air_bno_qz, data_air_bno_roll, data_air_bno_pitch,"); //10個
+        str[1] = "time_ms,takeoff,speed_level,data_air_bno_accx_mss,"; // 4個
+        str[2] = "data_air_bno_accy_mss,data_air_bno_accz_mss,"; // 2個
+        str[3] = "data_air_bno_qw,data_air_bno_qx,data_air_bno_qy,data_air_bno_qz,"; // 4個
+        break;
       }
       case 1: {
-        sprintf(trans_buff, "data_air_bno_yaw, estimated_altitude_lake_m, \
-          altitude_bmp_urm_offset_m.get(), flight_phase, speed_level, \
-          data_air_bmp_pressure_hPa, data_air_bmp_temperature_deg, data_air_bmp_altitude_m, \
-          data_under_bmp_pressure_hPa, data_under_bmp_temperature_deg,"); //10個
+        str[1] = "data_air_bno_roll,data_air_bno_pitch,data_air_bno_yaw,data_air_bno_cal_system,"; // 4個
+        str[2] = "data_air_bno_cal_gyro,data_air_bno_cal_accel,data_air_bno_cal_mag,"; // 3個
+        str[3] = "data_air_bmp_pressure_hPa,data_air_bmp_temperature_deg,data_air_bmp_altitude_m,"; // 3個
+        break;
       }
       case 2: {
-        sprintf(trans_buff, "data_under_bmp_altitude_m, data_under_urm_altitude_m, \
-          data_air_bmp_pressure_hPa, data_air_bmp_temperature_deg, data_air_bmp_altitude_m, \
-          data_air_sdp_differentialPressure_Pa, data_air_sdp_airspeed_ms, \
-          data_air_AoA_angle_deg, data_air_AoS_angle_deg,"); //10個
+        str[1] = "data_air_gps_hour,data_air_gps_minute,data_air_gps_second,data_air_gps_centisecond,"; // 4個
+        str[2] = "data_air_gps_latitude_deg,data_air_gps_longitude_deg,data_air_gps_altitude_m,"; // 3個
+        str[3] = "data_air_gps_groundspeed_ms,data_air_sdp_differentialPressure_Pa,data_air_sdp_airspeed_ms,"; // 3個
+        break;
       }
       case 3: {
-        sprintf(trans_buff, "data_ics_angle, data_air_bno_accx_mss, data_air_bno_accy_mss, \
-          data_air_bno_accz_mss, data_air_bno_qw, data_air_bno_qx, data_air_bno_qy, \
-          data_air_bno_qz, data_air_bno_roll, data_air_bno_pitch, data_air_bno_yaw,"); //10個
+        str[1] = "data_air_AoA_angle_deg,data_air_AoS_angle_deg,data_ics_angle,data_under_bmp_pressure_hPa,"; // 4個
+        str[2] = "data_under_bmp_temperature_deg,data_under_bmp_altitude_m,data_under_urm_altitude_m,"; // 3個
+        str[3] = "data_under_tsd20_altitude_m,estimated_altitude_lake_m,data_altitude_bmp_urm_offset_m,"; // 3個
+        break;
       }
-      case 4: {
-        sprintf(trans_buff, "data_air_gps_hour, data_air_gps_minute, data_air_gps_second, \
-          data_air_gps_centisecond, data_air_gps_latitude_deg, data_air_gps_longitude_deg, \
-          data_air_gps_altitude_m,data_air_gps_groundspeed_ms\n"); // 8個
+      default: {
+        Serial.println("The parameter value is out of range.");
+        break;
       }
     }
+
+    sprintf(trans_buff, "%s%s%s", str[1], str[2], str[3]);
 
     //バッファをクリアしてから新しいデータを書き込み
     SerialESP.flush();

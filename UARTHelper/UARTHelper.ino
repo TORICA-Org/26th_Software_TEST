@@ -46,5 +46,5 @@ void func_100Hz() {
   static uint8_t trans_count = 0;
   transmitLog(trans_count);
   trans_count++;
-  if (trans_count > 4) trans_count = 0;
+  if (trans_count > 3) trans_count = 0;
 }
