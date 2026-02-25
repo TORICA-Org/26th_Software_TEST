@@ -40,7 +40,7 @@ const float const_platform_altitude_m = 10.0f;
 //flight_phase, speed_level
 // FlightPhase flight_phase = PLATFORM;
 
-volatile int takeoff = false; // これだけでいい気がする
+volatile bool takeoff = false; // これだけでいい気がする
 
 volatile SpeedLevel speed_level = SLOW;
 
