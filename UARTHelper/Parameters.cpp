@@ -41,6 +41,8 @@ const float const_platform_altitude_m = 10.0f;
 // FlightPhase flight_phase = PLATFORM;
 
 volatile bool takeoff = false; // これだけでいい気がする
+// bool型はint型にキャスト可能(true == 1, false == 0)
+// `sprintf` などにおけるフォーマット指定子は `%d`
 
 volatile SpeedLevel speed_level = SLOW;
 
