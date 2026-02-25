@@ -50,7 +50,7 @@ extern const float const_platform_altitude_m;
 // };
 // extern FlightPhase flight_phase;
 
-extern volatile int takeoff;
+extern volatile bool takeoff;
 
 enum SpeedLevel {
   FAST,
