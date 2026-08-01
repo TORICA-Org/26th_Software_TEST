@@ -15,9 +15,10 @@ void setup() {
   Serial.println(AS5600_LIB_VERSION);
   Serial.println();
 
-  Wire.setSDA(16);
-  Wire.setSCL(17);
+  Wire.setSDA(0);
+  Wire.setSCL(1);
   Wire.begin();
+  
   int b = as5600_AOS.isConnected();
   if (b == 0) {
     Serial.print("Connect: ");

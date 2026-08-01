@@ -113,6 +113,10 @@ if (! bmp.performReading()) {
 //   return bmp.readAltitude(SEALEVELPRESSURE_HPA);
 // }
 
+double correct_airspeed(float measured_airspeed){
+  return -0.0083 * measured_airspeed * measured_airspeed + 1.7803 * measured_airspeed +1.0689;
+}
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -135,10 +139,25 @@ void loop() {
   read_sdp31(diff_Pressure, sdp_temperature);
   read_bmp(bmp_temperature, bmp_pressure);
 
-  airspeed = sqrt(abs(2.0 * diff_Pressure * ((bmp_temperature + 273.15) / (bmp_pressure * 100.0)) * 287.026));
+  airspeed = sqrt(fabs(2.0 * diff_Pressure * ((bmp_temperature + 273.15) / (bmp_pressure * 100.0)) * 287.026));
 
   Serial.print("airspeed:"); 
-  Serial.println(airspeed);
+  Serial.print(airspeed, 9);
+  Serial.print(",");
+  Serial.print("correct_airspeed:");
+  Serial.print(correct_airspeed(airspeed));
+  Serial.print(",");
+  Serial.print("diff_pressure:");
+  Serial.print(diff_Pressure);
+  Serial.print(",");
+  Serial.print("bmp_temp:");
+  Serial.print(bmp_temperature);
+  Serial.print(",");
+  Serial.print("bmp_pressure");
+  Serial.print(bmp_pressure);
+  Serial.print("sdp_temp:");
+  Serial.println(sdp_temperature);
 
-  delay(10);
+
+  delay(100);
 }

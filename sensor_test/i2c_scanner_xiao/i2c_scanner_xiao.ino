@@ -48,16 +48,11 @@ void setup() {
   Serial.println("\nDual Port I2C Scanner");
   Serial.println("=======================");
 
-  // Wire1 (I2C1)ポートの初期化
-  Serial.println("Initializing Wire1 on SDA=26, SCL=27");
-  Wire1.setSDA(26);
-  Wire1.setSCL(27);
-  Wire1.begin();
 
   // Wire (I2C0)ポートの初期化
   Serial.println("Initializing Wire on SDA=20, SCL=21");
-  Wire.setSDA(0);
-  Wire.setSCL(1);
+  // Wire.setSDA(20);
+  // Wire.setSCL(21);
   Wire.begin();
 
   Serial.println();
@@ -68,8 +63,6 @@ void loop() {
   scanI2CBus(Wire, "Wire (I2C0)");
   Serial.println("---");
 
-  // 2つ目のI2Cバス (Wire1) をスキャン
-  scanI2CBus(Wire1, "Wire1 (I2C1)");
 
   Serial.println("\nScan complete. Repeating in 5 seconds.");
   Serial.println("======================================\n");

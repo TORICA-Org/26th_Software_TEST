@@ -12,41 +12,42 @@ const int SD_MOSI = 7;
 const int SD_CS = 5;
 const int SD_SCK = 6;
 
-const String DATA_FILE = "data.csv"; // 読み込むログデータ
-const int COLUMN_SIZE = 5; // CSVの列数
+const String DATA_FILE = "data.csv"; // 指定のファイル名
 int ROW_SIZE = 0;          // 行カウント用
 
-// 読み込んだ1行分のデータを保持するグローバル配列
-String read_data[COLUMN_SIZE]; 
+// まとめて読み出すための固定バッファ (2KB)
+const int BUFFER_SIZE = 16392;
+char sd_buffer[BUFFER_SIZE];
+int buffer_length = 0;  // 現在バッファに入っている有効なデータ数
+int buffer_index = 0;   // 次に読み出すバッファ内の位置
+
+// ★【修正】ヘッダー行（928文字）がすっぽり入るように 1024 に拡大！
+const int MAX_LINE_SIZE = 16392;
+char line_data[MAX_LINE_SIZE];
 
 File myfile;
 
 void setup() {
-  // PCとの通信用
   Serial.begin(115200);
 
-  // UART0を使用
   Serial1.setTX(SERIAL_TX);
   Serial1.setRX(SERIAL_RX);
-  Serial1.begin(460800); // 各基板との通信速度を設定
+  Serial1.begin(460800, SERIAL_8E1); // 各基板との通信速度を設定
   delay(2000);
 
   Serial.println("Initializing SPI...");
   delay(1000);
 
-  // SPI設定
   SPI.setRX(SD_MISO);
   SPI.setTX(SD_MOSI);
   SPI.setSCK(SD_SCK);
 
-  // SDカードの接続判定
   if (SD.begin(SD_CS) == false){
     Serial.println("SD initialization failed.");
   } else {
     Serial.println("SD initialization done.");
   }
 
-  // データファイルがあるかどうか確認
   if(SD.exists(DATA_FILE)) {
     Serial.println(DATA_FILE + " exists.");
   } else {
@@ -54,87 +55,103 @@ void setup() {
   }
 }
 
-// 戻り値: 1行読み込み成功したらtrue、ファイル末尾に達したらfalse
-bool readLog(void){
-  // ファイルが閉じていれば、新しく開く（最初の1回目や、全行読み終わった後の再スタート用）
+// SDカードからバッファ（バケツ）へデータを一気に補充する関数
+void refillBuffer() {
+  int leftover = buffer_length - buffer_index;
+  if (leftover > 0 && buffer_index > 0) {
+    memmove(sd_buffer, &sd_buffer[buffer_index], leftover);
+  }
+  buffer_length = leftover;
+  buffer_index = 0;
+
+  int space_available = BUFFER_SIZE - buffer_length;
+  if (space_available > 0 && myfile.available() > 0) {
+    int bytes_read = myfile.read((uint8_t*)&sd_buffer[buffer_length], space_available);
+    buffer_length += bytes_read;
+  }
+}
+
+// バッファから1文字ずつ安全に取り出す関数
+char getNextChar() {
+  if (buffer_index >= buffer_length) {
+    refillBuffer();
+    if (buffer_index >= buffer_length) {
+      return 0; 
+    }
+  }
+  return sd_buffer[buffer_index++];
+}
+
+// バッファから1行を切り出す内部処理関数
+bool readNextLine(void) {
+  int line_idx = 0;
+  bool has_data = false;
+
+  while (true) {
+    char c = getNextChar();
+    if (c == 0) break;
+    
+    has_data = true; 
+    if (c == '\n') break; 
+    if (c != '\r') { 
+      if (line_idx < MAX_LINE_SIZE - 1) {
+        line_data[line_idx++] = c;
+      }
+    }
+  }
+  line_data[line_idx] = '\0';
+  return has_data;
+}
+
+// バッファから1行を切り出して、そのまま一発でUART送信する関数
+void transmitNextLineFromBuffer(void) {
   if (!myfile) {
     myfile = SD.open(DATA_FILE, FILE_READ);
     if (!myfile) {
       Serial.println("Cannot open " + DATA_FILE);
-      return false;
+      return;
     }
-    Serial.println("reading start...");
+    Serial.println("Buffered reading start...");
+    buffer_length = 0;
+    buffer_index = 0;
     ROW_SIZE = 0;
-  }
 
-  String buffer = ""; 
-  int column_count = 0; 
-
-  // 1行分、またはファイルの終端まで読み進める
-  while (myfile.available() > 0){
-    char c = myfile.read(); 
-
-    // ','（カンマ）が来た場合
-    if (c == ','){
-      if (column_count < COLUMN_SIZE) {
-        read_data[column_count] = buffer;
-      }
-      column_count++;
-      buffer = "";
-    }
-    // 改行コードが来た場合（ここで1行分が確定）
-    else if (c == '\n') {
-      if (column_count < COLUMN_SIZE) {
-        read_data[column_count] = buffer;
-      }
-      ROW_SIZE++;
-      return true; // 1行読めたので、一旦関数を抜けて送信処理へ
-    }
-    else if (c != '\r') {
-      buffer += c;
+    // ★【ここを追加】ファイルを開いた直後に、1行目（ヘッダー行）を空読みしてスキップ！
+    if (myfile.available() > 0) {
+      readNextLine(); 
+      Serial.println("Header line skipped.");
     }
   }
 
-  // ファイルの終端に達したとき、改行コードがなくバッファにデータが残っていれば最後の行として処理
-  if (buffer.length() > 0){
-    if (column_count < COLUMN_SIZE) {
-      read_data[column_count] = buffer;
+  // データ行を読み込み
+  if (readNextLine()) {
+    // もし末尾がカンマなら消去（今回のCSVにはありませんが、安全のため残しています）
+    int len = strlen(line_data);
+    if (len > 0 && line_data[len - 1] == ',') {
+      line_data[len - 1] = '\0';
     }
+
+    // ESP32へ送信
+    Serial1.print(line_data); 
+    Serial1.print("\n"); 
+    
+    // PCモニターへ表示
+    Serial.print(line_data);
+    Serial.print("\n");
+
     ROW_SIZE++;
-    return true;
+  } else {
+    myfile.close(); 
+    Serial.print("finish reading. Total rows: ");
+    Serial.println(ROW_SIZE);
   }
-
-  // ファイルの全行を読み切った場合
-  myfile.close(); // ファイルを完全に閉じる
-  Serial.print("finish reading. Total rows: ");
-  Serial.println(ROW_SIZE);
-  return false; 
-}
-
-// 1行まるごと","区切りでSerial1（各基板）へ送信する関数
-void transmitLog(void) {
-  String send_line = "";
-  
-  for (int i = 0; i < COLUMN_SIZE; i++) {
-    send_line += read_data[i];
-    if (i < COLUMN_SIZE - 1) {
-      send_line += ","; // 要素の間にカンマを挟む
-    }
-  }
-  
-  Serial1.println(send_line); // 各基板へ送信（末尾に改行を付与）
 }
 
 uint32_t last_time = 0;
 void timer_100Hz(void){
-  // 10ms以上経過したか判定
   if (millis() - last_time >= 10){
-    last_time = millis(); //
-    
-    // 1行読み込みに成功したら、それを送信する
-    if (readLog()) {
-      transmitLog();
-    }
+    last_time = millis(); 
+    transmitNextLineFromBuffer();
   }
 }
 

@@ -12,13 +12,13 @@ void setup() {
   Serial.begin(115200);
   while (!Serial);
   Serial.println("Adafruit BMP388 / BMP390 test");
-  Wire.setSDA(16);
-  Wire.setSCL(17);
+  Wire.setSDA(4);
+  Wire.setSCL(5);
   Wire.begin();
 
-  if (!bmp.begin_I2C(0x77, &Wire)) {   // hardware I2C mode, can pass in address & alt Wire
+  if (!bmp.begin_I2C(0x76, &Wire)) {   // hardware I2C mode, can pass in address & alt Wire
     Serial.println("Could not find a valid BMP3 sensor, check wiring!");
-    while (1);
+    // while (1);
   }
 
   // Set up oversampling and filter initialization
